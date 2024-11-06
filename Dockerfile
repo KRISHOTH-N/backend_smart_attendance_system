@@ -1,30 +1,50 @@
-# Use an official Python runtime as a base image
-FROM python:3.11-slim
+# Use a Python image with a suitable version (3.10.3-slim for example)
+FROM python:3.10.3-slim-bullseye
 
-# Set environment variables to prevent Python from writing pyc files and buffer output
-ENV PYTHONUNBUFFERED=1
-
-# Install system dependencies, including build tools and cmake
-RUN apt-get update && apt-get install -y \
-    build-essential \
-    cmake \
-    g++ \
-    wget \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
-
-# Set the working directory
+# Set the working directory in the container
 WORKDIR /app
 
-# Copy the requirements.txt and install dependencies
-COPY requirements.txt /app/
-RUN pip install --no-cache-dir -r requirements.txt
+# Copy the local Flask app code into the container
+COPY . /app
 
-# Copy the rest of your application code
-COPY . /app/
+# Install system dependencies and libraries that are required for face-recognition and other dependencies
+RUN apt-get update -y && \
+    apt-get install -y --fix-missing \
+    build-essential \
+    cmake \
+    gfortran \
+    git \
+    wget \
+    curl \
+    graphicsmagick \
+    libgraphicsmagick1-dev \
+    libatlas-base-dev \
+    libavcodec-dev \
+    libavformat-dev \
+    libgtk2.0-dev \
+    libjpeg-dev \
+    liblapack-dev \
+    libswscale-dev \
+    pkg-config \
+    python3-dev \
+    python3-numpy \
+    software-properties-common \
+    zip && \
+    apt-get clean && rm -rf /tmp/* /var/tmp/*
 
-# Expose the port that the Flask app will run on
+# Install the necessary Python dependencies
+RUN pip install --upgrade pip
+RUN pip install -r requirements.txt
+
+# If needed, install dlib (face-recognition depends on it)
+RUN cd ~ && \
+    mkdir -p dlib && \
+    git clone -b 'v19.9' --single-branch https://github.com/davisking/dlib.git dlib/ && \
+    cd dlib && \
+    python3 setup.py install --yes USE_AVX_INSTRUCTIONS
+
+# Expose port 5000 to allow traffic to your Flask app
 EXPOSE 5000
 
-# Command to run the application
+# Command to run the Flask app
 CMD ["python", "app.py"]

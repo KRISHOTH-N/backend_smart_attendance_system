@@ -1,15 +1,9 @@
-# Use a Python image with a suitable version (3.10.3-slim for example)
+# Use a specific Python version as the base image
 FROM python:3.10.3-slim-bullseye
 
-# Set the working directory in the container
-WORKDIR /app
-
-# Copy the local Flask app code into the container
-COPY . /app
-
-# Install system dependencies and libraries that are required for face-recognition and other dependencies
-RUN apt-get update -y && \
-    apt-get install -y --fix-missing \
+# Install system dependencies
+RUN apt-get -y update
+RUN apt-get install -y --fix-missing \
     build-essential \
     cmake \
     gfortran \
@@ -29,22 +23,27 @@ RUN apt-get update -y && \
     python3-dev \
     python3-numpy \
     software-properties-common \
-    zip && \
-    apt-get clean && rm -rf /tmp/* /var/tmp/*
+    zip \
+    && apt-get clean && rm -rf /tmp/* /var/tmp/*
 
-# Install the necessary Python dependencies
-RUN pip install --upgrade pip
-RUN pip install -r requirements.txt
-
-# If needed, install dlib (face-recognition depends on it)
+# Clone and install dlib (used by face_recognition)
 RUN cd ~ && \
     mkdir -p dlib && \
     git clone -b 'v19.9' --single-branch https://github.com/davisking/dlib.git dlib/ && \
-    cd dlib && \
+    cd dlib/ && \
     python3 setup.py install --yes USE_AVX_INSTRUCTIONS
 
-# Expose port 5000 to allow traffic to your Flask app
-EXPOSE 5000
+# Set the working directory to your Flask app
+WORKDIR /root/backend_for_smart_attendance_system
 
-# Command to run the Flask app
-CMD ["python", "app.py"]
+# Copy your app into the container
+COPY . /root/backend_for_smart_attendance_system
+
+# Install dependencies from requirements.txt
+RUN pip3 install -r requirements.txt
+
+# Install the face_recognition package itself
+RUN python3 setup.py install
+
+# Command to run your Flask app (adjust if needed)
+CMD ["python3", "app.py"]
